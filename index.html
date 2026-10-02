@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="noindex, nofollow">
+<title>AI Lead Gen Pipeline — n8n Architecture</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23EA580C'/><text x='32' y='46' text-anchor='middle' font-family='system-ui' font-size='30' font-weight='700' fill='%23fff'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--ink:#111;--sub:#666;--line:#E5E7EB;--soft:#F7F8F9;--n8n:#EA580C;--green:#059669;--blue:#2563EB;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;box-sizing:border-box;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+*,*::before,*::after{box-sizing:inherit}html{background:var(--soft)}
+body{margin:0;color:var(--ink);font:15px/1.55 "Inter",-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}:focus-visible{outline:2px solid var(--n8n);outline-offset:2px}
+.top{background:#fff;border-bottom:1px solid var(--line);padding:16px 28px}
+.top h1{margin:0;font-size:18px;font-weight:700}.top p{margin:2px 0 0;color:var(--sub);font-size:14px}
+.tabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--line);padding:0 28px;overflow-x:auto;position:sticky;top:0;z-index:10}
+.tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:12px 20px;font:500 14px "Inter",sans-serif;color:var(--sub);white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--n8n);border-bottom-color:var(--n8n)}
+.panel{display:none;padding:28px;max-width:1200px;margin:0 auto}.panel.on{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0}
+.box.full{grid-column:1/-1}.box h2{margin:0 0 6px;font-size:18px}.box h3{margin:0 0 6px;font-size:15px;font-weight:700}
+.box>p,.box>.dim{margin:0 0 12px;color:var(--sub);font-size:13.5px}
+
+/* Pipeline flow */
+.pipe{display:grid;gap:0;margin:8px 0 16px}
+.node{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.node:last-child{border-bottom:0}
+.ico{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-size:20px;flex:none}
+.ico.or{background:#FFF7ED;border:1px solid #FDBA74}.ico.gr{background:#ECFDF5;border:1px solid #6EE7B7}
+.ico.bl{background:#EFF6FF;border:1px solid #93C5FD}.ico.pu{background:#F5F3FF;border:1px solid #C4B5FD}
+.ico.gy{background:var(--soft);border:1px solid var(--line)}
+.node b{display:block;font-size:14px;margin-bottom:2px}
+.node small{color:var(--sub);font-size:13px;display:block}
+.ntool{font:500 12px var(--mono);color:var(--n8n);background:#FFF7ED;padding:3px 8px;border-radius:4px;white-space:nowrap;align-self:center}
+.arrow{text-align:center;color:var(--line);font-size:18px;padding:2px 0}
+
+/* Sample data */
+pre{font:13px/1.5 var(--mono);background:#1a1a2e;color:#D4D6DB;border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0 0 12px}
+pre .k{color:#F97316}pre .s{color:#34D399}pre .n{color:#60A5FA}pre .c{color:#555}
+.sample{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+.sample .sh{background:var(--soft);padding:8px 12px;font:600 12px "Inter",sans-serif;color:var(--sub);border-bottom:1px solid var(--line)}
+
+/* Stack */
+.stack{display:grid;gap:8px}.stack>div{background:var(--soft);border-radius:8px;padding:10px 14px;font-size:14px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+.stack b{font-size:13px}.stack small{color:var(--sub);font-size:12px;display:block}
+.stack .logo{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:14px;flex:none}
+
+/* Cost */
+.cost{display:grid;gap:8px;margin-top:12px}.cost>div{background:var(--soft);border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.cost b{font-size:14px}.cost .price{font:600 18px var(--mono);color:var(--n8n)}
+.cost small{color:var(--sub);font-size:12px;display:block}
+
+.notes{max-width:680px;margin:20px auto}.notes h2{font-size:18px;margin:28px 0 8px}.notes p{margin:0 0 12px;font-size:15px}
+.notes ul{margin:0 0 12px;padding-left:20px}.notes li{margin:0 0 6px;font-size:14px}
+.foot{border-top:1px solid var(--line);padding-top:12px;margin-top:28px;font-size:13px;color:var(--sub)}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}.node{grid-template-columns:40px 1fr}}
+</style>
+</head>
+<body>
+<div class="top"><h1>AI Lead Gen Pipeline — n8n Architecture</h1><p>For Engin's Upwork post, by James. MVP with n8n, Apify, OpenAI, and Gmail.</p></div>
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-t="flow">Pipeline</button>
+  <button role="tab" data-t="data">Sample data</button>
+  <button role="tab" data-t="stack">Stack & cost</button>
+  <button role="tab" data-t="notes">Notes</button>
+</div>
+
+<!-- PIPELINE -->
+<section id="flow" class="panel on">
+  <div class="grid2">
+    <div class="box full">
+      <h2>End-to-end n8n workflow</h2>
+      <p class="dim">Each row is one n8n node. The whole pipeline runs automatically once you enter criteria.</p>
+      <div class="pipe">
+        <div class="node"><div class="ico or">📝</div><div><b>1. Criteria input</b><small>"Almanya'da 10–100 çalışanı olan mobilya üreticileri" → parsed by OpenAI into structured search parameters: industry, location, employee range.</small></div><div class="ntool">n8n Form</div></div>
+        <div class="node"><div class="ico bl">🔍</div><div><b>2. Company discovery</b><small>Apify scrapes Google Maps and LinkedIn for matching companies. Returns name, website, location, size estimate, and description.</small></div><div class="ntool">Apify</div></div>
+        <div class="node"><div class="ico bl">🌐</div><div><b>3. Website analysis</b><small>Apify crawls each company's website. OpenAI reads the page and scores fit (0-10) against your criteria. Below 6 → filtered out.</small></div><div class="ntool">OpenAI</div></div>
+        <div class="node"><div class="ico pu">📧</div><div><b>4. Contact extraction</b><small>Hunter.io or Snov.io finds the best email contact. Verifies deliverability. No valid email → skipped, not guessed.</small></div><div class="ntool">Hunter.io</div></div>
+        <div class="node"><div class="ico gr">✍️</div><div><b>5. Email personalization</b><small>Your fixed template + OpenAI adds 1-2 personalized sentences based on the company's website. You approve the template once, not per email.</small></div><div class="ntool">OpenAI</div></div>
+        <div class="node"><div class="ico or">📤</div><div><b>6. Email sending</b><small>Gmail sends from your account with 60-90 second delays between emails. Daily limit respected. Each send logged in the CRM sheet.</small></div><div class="ntool">Gmail</div></div>
+        <div class="node"><div class="ico gr">📥</div><div><b>7. Reply tracking</b><small>Gmail trigger watches for replies. OpenAI classifies: interested / not interested / question / out of office / bounce.</small></div><div class="ntool">Gmail + AI</div></div>
+        <div class="node"><div class="ico or">🔔</div><div><b>8. Opportunity alert</b><small>If classified as "interested" or "question" → sends you an instant Telegram/Slack/email notification with the reply and company context.</small></div><div class="ntool">Telegram</div></div>
+        <div class="node"><div class="ico gy">📊</div><div><b>9. CRM / Google Sheet</b><small>Every company tracked: name, website, contact, fit score, email sent, reply status, opportunity flag. One sheet = your pipeline.</small></div><div class="ntool">Sheets</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SAMPLE DATA -->
+<section id="data" class="panel">
+  <div class="grid2">
+    <div class="box">
+      <h3>Input → OpenAI parsing</h3>
+      <div class="sample"><div class="sh">You type</div><pre>"Almanya'da 10-100 çalışanı olan mobilya üreticileri"</pre></div>
+      <div class="sample"><div class="sh">OpenAI returns</div><pre>{
+  <span class="k">"industry"</span>: <span class="s">"furniture manufacturing"</span>,
+  <span class="k">"location"</span>: <span class="s">"Germany"</span>,
+  <span class="k">"employee_min"</span>: <span class="n">10</span>,
+  <span class="k">"employee_max"</span>: <span class="n">100</span>,
+  <span class="k">"search_queries"</span>: [
+    <span class="s">"Möbelhersteller Deutschland"</span>,
+    <span class="s">"furniture manufacturer Germany"</span>
+  ]
+}</pre></div>
+    </div>
+    <div class="box">
+      <h3>Discovery → fit scoring</h3>
+      <div class="sample"><div class="sh">Apify returns a company</div><pre>{
+  <span class="k">"name"</span>: <span class="s">"Müller Möbel GmbH"</span>,
+  <span class="k">"website"</span>: <span class="s">"https://mueller-moebel.de"</span>,
+  <span class="k">"city"</span>: <span class="s">"Stuttgart"</span>,
+  <span class="k">"employees"</span>: <span class="s">"~45"</span>,
+  <span class="k">"description"</span>: <span class="s">"Custom office furniture"</span>
+}</pre></div>
+      <div class="sample"><div class="sh">OpenAI scores fit</div><pre>{
+  <span class="k">"fit_score"</span>: <span class="n">8</span>,
+  <span class="k">"reason"</span>: <span class="s">"Furniture mfg, 45 employees,
+  matches all criteria"</span>,
+  <span class="k">"website_summary"</span>: <span class="s">"Makes custom
+  office desks and shelving for B2B"</span>
+}</pre></div>
+    </div>
+    <div class="box">
+      <h3>Email personalization</h3>
+      <div class="sample"><div class="sh">Your fixed template</div><pre>Merhaba {name},
+
+{personalized_line}
+
+[your standard pitch here]
+
+Saygılarımla,
+Engin</pre></div>
+      <div class="sample"><div class="sh">OpenAI fills in</div><pre>Merhaba Herr Müller,
+
+<span class="s">Web sitenizde gördüğüm ofis mobilyası
+seriniz ve B2B odağınız dikkatimi çekti.</span>
+
+[your standard pitch here]
+
+Saygılarımla,
+Engin</pre></div>
+    </div>
+    <div class="box">
+      <h3>Reply classification</h3>
+      <div class="sample"><div class="sh">Incoming reply</div><pre>"Danke für Ihre Nachricht. Könnten
+Sie uns mehr Informationen senden?"</pre></div>
+      <div class="sample"><div class="sh">AI classification</div><pre>{
+  <span class="k">"class"</span>: <span class="s">"interested"</span>,
+  <span class="k">"action"</span>: <span class="s">"notify_owner"</span>,
+  <span class="k">"summary"</span>: <span class="s">"Asking for more info.
+  Likely genuine interest."</span>
+}
+<span class="c">→ Telegram notification sent to Engin</span></pre></div>
+    </div>
+    <div class="box full">
+      <h3>CRM sheet — one row per company</h3>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--soft)"><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Company</th><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Website</th><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Contact</th><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Fit</th><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Email sent</th><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Reply</th><th style="padding:8px;text-align:left;border-bottom:2px solid var(--line)">Status</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Müller Möbel GmbH</td><td style="padding:8px;border-bottom:1px solid var(--line)">mueller-moebel.de</td><td style="padding:8px;border-bottom:1px solid var(--line)">h.mueller@...</td><td style="padding:8px;border-bottom:1px solid var(--line)">8/10</td><td style="padding:8px;border-bottom:1px solid var(--line)">Oct 1</td><td style="padding:8px;border-bottom:1px solid var(--line)">Oct 2</td><td style="padding:8px;border-bottom:1px solid var(--line);color:var(--green);font-weight:600">🟢 Interested</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Schmidt Holz AG</td><td style="padding:8px;border-bottom:1px solid var(--line)">schmidt-holz.de</td><td style="padding:8px;border-bottom:1px solid var(--line)">info@...</td><td style="padding:8px;border-bottom:1px solid var(--line)">7/10</td><td style="padding:8px;border-bottom:1px solid var(--line)">Oct 1</td><td style="padding:8px;border-bottom:1px solid var(--line)">—</td><td style="padding:8px;border-bottom:1px solid var(--line);color:var(--sub)">⏳ Waiting</td></tr>
+          <tr><td style="padding:8px">Weber Küchen</td><td style="padding:8px">weber-kuechen.de</td><td style="padding:8px">m.weber@...</td><td style="padding:8px">9/10</td><td style="padding:8px">Oct 1</td><td style="padding:8px">Oct 1</td><td style="padding:8px;color:#DC2626">🔴 Not interested</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK & COST -->
+<section id="stack" class="panel">
+  <div class="grid2">
+    <div class="box">
+      <h2>Stack</h2>
+      <div class="stack">
+        <div><div class="logo" style="background:#FFF7ED;color:var(--n8n)">⚡</div><div><b>n8n (self-hosted)</b><small>Workflow engine. Your server, your data. Free.</small></div></div>
+        <div><div class="logo" style="background:#EFF6FF;color:var(--blue)">🕷</div><div><b>Apify</b><small>Scrapes Google Maps and company websites. Pay per run.</small></div></div>
+        <div><div class="logo" style="background:#F5F3FF;color:#7C3AED">🧠</div><div><b>OpenAI GPT-4o-mini</b><small>Parses criteria, scores fit, personalizes emails, classifies replies.</small></div></div>
+        <div><div class="logo" style="background:#ECFDF5;color:var(--green)">📧</div><div><b>Gmail</b><small>Sends from your account. Watches for replies.</small></div></div>
+        <div><div class="logo" style="background:#EFF6FF;color:var(--blue)">🔍</div><div><b>Hunter.io</b><small>Finds and verifies email contacts. 25 free/month, then pay per lookup.</small></div></div>
+        <div><div class="logo" style="background:#FEF3C7;color:#D97706">💬</div><div><b>Telegram</b><small>Instant alerts when a lead replies with interest.</small></div></div>
+        <div><div class="logo" style="background:#ECFDF5;color:var(--green)">📊</div><div><b>Google Sheets</b><small>CRM. Every company, email, reply, and status in one sheet.</small></div></div>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Monthly running cost (estimate)</h2>
+      <div class="cost">
+        <div><div><b>n8n (self-hosted)</b><small>On a $5/mo VPS or your own server</small></div><span class="price">$5</span></div>
+        <div><div><b>Apify</b><small>~200 companies/month</small></div><span class="price">$5-10</span></div>
+        <div><div><b>OpenAI GPT-4o-mini</b><small>~500 calls/month (scoring + emails + replies)</small></div><span class="price">$3-5</span></div>
+        <div><div><b>Hunter.io</b><small>Starter plan, 500 lookups</small></div><span class="price">$34</span></div>
+        <div><div><b>Gmail + Sheets + Telegram</b><small>Free tiers</small></div><span class="price">$0</span></div>
+        <div style="border-top:2px solid var(--line);padding-top:12px"><div><b>Total monthly</b><small>For ~200 leads/month</small></div><span class="price">~$50</span></div>
+      </div>
+      <h2 style="margin-top:24px">Setup cost</h2>
+      <div class="cost">
+        <div><div><b>Full pipeline build + delivery</b><small>5 working days</small></div><span class="price">$1,200</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NOTES -->
+<section id="notes" class="panel">
+  <div class="notes">
+    <h2>What I'd deliver</h2>
+    <ul>
+      <li>Complete n8n workflow, exported and importable on your instance.</li>
+      <li>n8n server setup (self-hosted on a VPS or your machine).</li>
+      <li>All API connections configured and tested: Apify, OpenAI, Gmail, Hunter, Telegram, Sheets.</li>
+      <li>Your email template loaded with the personalization prompt tuned to your business.</li>
+      <li>CRM Google Sheet with columns and formatting ready.</li>
+      <li>A short Loom walkthrough: how to enter new criteria, check results, and adjust the template.</li>
+      <li>One live test run with a real batch of companies so you see the full pipeline in action.</li>
+    </ul>
+    <h2>What I'd need from you</h2>
+    <ul>
+      <li>Your Gmail account (or an alias for outreach).</li>
+      <li>Your email template and pitch — I only personalize the opener, the core message stays yours.</li>
+      <li>A first target criteria to test with (like your furniture example).</li>
+      <li>Telegram account for notifications (or Slack/email if you prefer).</li>
+    </ul>
+    <h2>Decisions I'd want to settle with you</h2>
+    <ul>
+      <li><b>Approval before sending?</b> I can add a step where you review and approve each batch before the emails go out, or it can run fully automatically. Most people start with approval and switch to auto once they trust the scoring.</li>
+      <li><b>Follow-up emails?</b> The MVP does one email per company. Adding a 3-day follow-up for non-replies is a small addition if you want it.</li>
+      <li><b>Daily sending limit?</b> Gmail allows ~500/day, but for cold outreach I'd recommend 30-50/day per account to protect deliverability. We can add more sending accounts later.</li>
+    </ul>
+    <p class="foot">Sample data is fictional. The pipeline runs on real APIs with real companies from day one.</p>
+  </div>
+</section>
+
+<script>
+document.querySelector('.tabs').addEventListener('click',function(e){
+  var b=e.target.closest('[role=tab]');if(!b)return;
+  document.querySelectorAll('[role=tab]').forEach(function(t){t.setAttribute('aria-selected','false')});
+  b.setAttribute('aria-selected','true');
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on')});
+  document.getElementById(b.dataset.t).classList.add('on');
+});
+</script>
+</body>
+</html>
